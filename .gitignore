@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Data
+data/
+*.csv
+*.parquet
+
+# Notebooks
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate*
+terraform/*.tfplan
+terraform/.terraform.lock.hcl
+
+# Docker
+*.log
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Airflow
+airflow.db
+airflow.cfg
+logs/
+
+# Great Expectations
+great_expectations/uncommitted/
+great_expectations/checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db

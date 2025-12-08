@@ -1,0 +1,50 @@
+[project]
+name = "streaming-etl-pipeline"
+version = "0.1.0"
+description = "IoT Streaming ETL Pipeline: Kafka -> Spark -> S3 Data Lake -> Redshift"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+    "pyspark>=3.5",
+    "kafka-python>=2.0",
+    "apache-airflow>=2.8",
+    "great-expectations>=0.18",
+    "boto3>=1.34",
+    "prometheus-client>=0.20",
+    "psycopg2-binary>=2.9",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.2",
+    "mypy>=1.8",
+    "pre-commit>=3.6",
+]
+
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
