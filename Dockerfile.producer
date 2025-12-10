@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir kafka-python==2.0.2 prometheus-client==0.20.0
+
+COPY src/ src/
+
+EXPOSE 8000
+
+ENTRYPOINT ["python", "-m", "src.producers.sensor_simulator"]

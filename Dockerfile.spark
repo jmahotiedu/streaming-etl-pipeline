@@ -1,0 +1,16 @@
+FROM bitnami/spark:3.5
+
+USER root
+
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir \
+    great-expectations==0.18.8 \
+    boto3==1.34.25 \
+    prometheus-client==0.20.0 \
+    psycopg2-binary==2.9.9
+
+COPY src/ /app/src/
+
+WORKDIR /app
+
+USER 1001
