@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "dags/**"
+      - "Dockerfile.*"
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push producer image
+        run: |
+          docker build -f Dockerfile.producer -t ${{ env.ECR_REGISTRY }}/streaming-etl-producer:${{ github.sha }} .
+          docker push ${{ env.ECR_REGISTRY }}/streaming-etl-producer:${{ github.sha }}
+          docker tag ${{ env.ECR_REGISTRY }}/streaming-etl-producer:${{ github.sha }} ${{ env.ECR_REGISTRY }}/streaming-etl-producer:latest
+          docker push ${{ env.ECR_REGISTRY }}/streaming-etl-producer:latest
+
+      - name: Build and push spark image
+        run: |
+          docker build -f Dockerfile.spark -t ${{ env.ECR_REGISTRY }}/streaming-etl-spark:${{ github.sha }} .
+          docker push ${{ env.ECR_REGISTRY }}/streaming-etl-spark:${{ github.sha }}
+          docker tag ${{ env.ECR_REGISTRY }}/streaming-etl-spark:${{ github.sha }} ${{ env.ECR_REGISTRY }}/streaming-etl-spark:latest
+          docker push ${{ env.ECR_REGISTRY }}/streaming-etl-spark:latest
+
+  upload-dags:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload DAGs to S3
+        run: |
+          aws s3 sync dags/ s3://${{ secrets.MWAA_DAGS_BUCKET }}/dags/ --delete
