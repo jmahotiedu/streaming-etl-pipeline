@@ -1,0 +1,56 @@
+config_version: 3.0
+
+datasources:
+  bronze_s3:
+    class_name: Datasource
+    execution_engine:
+      class_name: PandasExecutionEngine
+    data_connectors:
+      bronze_parquet:
+        class_name: RuntimeDataConnector
+        batch_identifiers:
+          - run_id
+          - partition_date
+
+  silver_s3:
+    class_name: Datasource
+    execution_engine:
+      class_name: PandasExecutionEngine
+    data_connectors:
+      silver_parquet:
+        class_name: RuntimeDataConnector
+        batch_identifiers:
+          - run_id
+          - partition_date
+
+stores:
+  expectations_store:
+    class_name: ExpectationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: expectations/
+
+  validations_store:
+    class_name: ValidationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: validations/
+
+  checkpoint_store:
+    class_name: CheckpointStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: checkpoints/
+
+expectations_store_name: expectations_store
+validations_store_name: validations_store
+checkpoint_store_name: checkpoint_store
+
+data_docs_sites:
+  local_site:
+    class_name: SiteBuilder
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: data_docs/local_site/
+    site_index_builder:
+      class_name: DefaultSiteIndexBuilder
