@@ -1,0 +1,77 @@
+groups:
+  - name: streaming_pipeline_alerts
+    rules:
+      - alert: HighConsumerLag
+        expr: kafka_consumer_lag > 10000
+        for: 5m
+        labels:
+          severity: critical
+          team: data-engineering
+        annotations:
+          summary: "Kafka consumer lag exceeds 10,000 messages"
+          description: "Consumer lag for {{ $labels.topic }}/{{ $labels.partition }} is {{ $value }} (threshold: 10,000). Check Spark streaming consumer health."
+          runbook: "Check Spark UI for failed queries, restart consumer if needed."
+
+      - alert: ProducerDown
+        expr: rate(events_produced_total[2m]) == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: data-engineering
+        annotations:
+          summary: "Sensor producer has stopped sending events"
+          description: "No events produced in the last 2 minutes. The sensor simulator may have crashed or lost connectivity to Kafka."
+          runbook: "Check producer container logs, verify Kafka connectivity, restart producer."
+
+      - alert: DataQualityFailures
+        expr: quality_checks_total{result="fail"} > 0
+        for: 1m
+        labels:
+          severity: warning
+          team: data-engineering
+        annotations:
+          summary: "Data quality checks are failing"
+          description: "{{ $value }} quality check failures detected. Investigate Bronze/Silver data for schema drift or corrupt records."
+          runbook: "Check Great Expectations validation results in Airflow logs."
+
+      - alert: HighProcessingLatency
+        expr: histogram_quantile(0.95, sum(rate(processing_latency_seconds_bucket[5m])) by (le)) > 60
+        for: 5m
+        labels:
+          severity: warning
+          team: data-engineering
+        annotations:
+          summary: "Processing latency p95 exceeds 60 seconds"
+          description: "The 95th percentile processing latency is {{ $value }}s (threshold: 60s). Pipeline may be falling behind."
+          runbook: "Check Spark executor memory/CPU, consider scaling EMR cluster."
+
+      - alert: AnomalyRateSpike
+        expr: rate(anomalies_injected_total[5m]) / rate(events_produced_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: data-engineering
+        annotations:
+          summary: "Anomaly rate exceeds 10% of total events"
+          description: "{{ $value | humanizePercentage }} of events are anomalies. This may indicate a real issue with sensors or misconfigured anomaly injection."
+
+      - alert: S3WriteFailures
+        expr: increase(s3_writes_total{status="failure"}[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: data-engineering
+        annotations:
+          summary: "S3 writes are failing"
+          description: "{{ $value }} S3 write failures in the last 15 minutes. Data may not be landing in the data lake."
+          runbook: "Check IAM permissions, S3 bucket policies, and network connectivity."
+
+      - alert: AirflowTaskFailure
+        expr: airflow_task_status == 2
+        for: 1m
+        labels:
+          severity: critical
+          team: data-engineering
+        annotations:
+          summary: "Airflow task has failed"
+          description: "Task {{ $labels.task_id }} in DAG {{ $labels.dag_id }} has failed. Check Airflow UI for details."
