@@ -112,10 +112,7 @@ resource "aws_security_group" "default" {
 
 check "redshift_password_required" {
   assert {
-    condition = !var.enable_redshift || (
-      var.redshift_admin_password != null &&
-      length(var.redshift_admin_password) >= 8
-    )
+    condition = !var.enable_redshift || try(length(var.redshift_admin_password), 0) >= 8
     error_message = "redshift_admin_password must be set to at least 8 characters when enable_redshift=true."
   }
 }
