@@ -18,6 +18,16 @@ resource "aws_ecr_repository" "spark" {
   }
 }
 
+resource "aws_ecr_repository" "dashboard" {
+  name                 = "streaming-etl-dashboard"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
 resource "aws_ecr_lifecycle_policy" "producer" {
   repository = aws_ecr_repository.producer.name
 
@@ -41,6 +51,27 @@ resource "aws_ecr_lifecycle_policy" "producer" {
 
 resource "aws_ecr_lifecycle_policy" "spark" {
   repository = aws_ecr_repository.spark.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep latest 20 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 20
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_ecr_lifecycle_policy" "dashboard" {
+  repository = aws_ecr_repository.dashboard.name
 
   policy = jsonencode({
     rules = [

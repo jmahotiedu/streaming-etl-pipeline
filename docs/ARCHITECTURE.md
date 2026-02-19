@@ -145,7 +145,7 @@ Sensor Simulator                 Apache Kafka (MSK)
 - **Airflow:** Secrets backend (AWS Secrets Manager) for connection strings
 
 ### Network
-- **VPC:** All services in private subnets
+- **VPC:** Data-plane services stay in private subnets; public subnets are used only for ingress ALBs and optional demo shell tasks.
 - **Security groups:** Least-privilege access between services
 - **NAT gateway:** For outbound internet access (pip, Docker pulls)
-- **No public endpoints:** MSK, EMR, Redshift accessible only within VPC
+- **Public exposure scope:** Optional Streamlit demo shell is internet-facing via ALB; MSK, EMR, and Redshift remain VPC-only.

@@ -15,6 +15,8 @@ DEPLOY_CORE_ONLY="${DEPLOY_CORE_ONLY:-false}"
 ENABLE_EMR="${ENABLE_EMR:-true}"
 ENABLE_MWAA="${ENABLE_MWAA:-true}"
 ENABLE_REDSHIFT="${ENABLE_REDSHIFT:-true}"
+ENABLE_DASHBOARD_SHELL="${ENABLE_DASHBOARD_SHELL:-true}"
+DASHBOARD_IMAGE_TAG="${DASHBOARD_IMAGE_TAG:-latest}"
 
 if [[ "${DEPLOY_CORE_ONLY}" == "true" ]]; then
   ENABLE_EMR="false"
@@ -48,6 +50,8 @@ terraform_vars=(
   "-var=enable_emr=${ENABLE_EMR}"
   "-var=enable_mwaa=${ENABLE_MWAA}"
   "-var=enable_redshift=${ENABLE_REDSHIFT}"
+  "-var=enable_dashboard_shell=${ENABLE_DASHBOARD_SHELL}"
+  "-var=dashboard_image_tag=${DASHBOARD_IMAGE_TAG}"
 )
 
 if [[ "${ENABLE_REDSHIFT}" == "true" ]]; then

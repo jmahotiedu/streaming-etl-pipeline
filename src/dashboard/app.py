@@ -17,7 +17,7 @@ import streamlit as st
 
 st.set_page_config(
     page_title="IoT Pipeline Analytics",
-    page_icon="📡",
+    page_icon=":bar_chart:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -25,6 +25,22 @@ st.set_page_config(
 # Data source configuration
 GOLD_PATH = os.environ.get("GOLD_DATA_PATH", "data/gold/")
 REDSHIFT_CONN = os.environ.get("REDSHIFT_CONN_STRING", "")
+PIPELINE_MODE = os.environ.get("PIPELINE_MODE", "core-mode").strip().lower()
+PIPELINE_DATA_MODE = os.environ.get("PIPELINE_DATA_MODE", "auto").strip().lower()
+
+IS_CORE_MODE = PIPELINE_MODE.startswith("core")
+USING_DEMO_DATA = PIPELINE_DATA_MODE in {"demo", "synthetic", "core-mode"}
+
+
+def render_mode_banner() -> None:
+    """Render deployment-mode status so public demos are explicit about data source truth."""
+    if IS_CORE_MODE or USING_DEMO_DATA:
+        st.warning(
+            "Core Mode / Demo Data: this public shell runs synthetic analytics while "
+            "EMR, MWAA, and Redshift entitlements are pending."
+        )
+    else:
+        st.success("Full Mode: dashboard is configured for live data paths.")
 
 
 @st.cache_data(ttl=60)
@@ -152,6 +168,10 @@ page = st.sidebar.radio(
 )
 st.sidebar.markdown("---")
 st.sidebar.info("Data refreshes every 60 seconds")
+st.sidebar.caption(f"Mode: {'Core Mode' if IS_CORE_MODE else 'Full Mode'}")
+st.sidebar.caption(f"Data source: {'Demo Data' if USING_DEMO_DATA else 'Auto/Live'}")
+
+render_mode_banner()
 
 
 # -- Page 1: Real-Time Overview --

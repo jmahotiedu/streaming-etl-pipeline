@@ -101,3 +101,33 @@ variable "redshift_admin_password" {
   nullable    = true
   sensitive   = true
 }
+
+variable "enable_dashboard_shell" {
+  description = "Deploy public Streamlit shell (core/full mode visibility dashboard)"
+  type        = bool
+  default     = true
+}
+
+variable "dashboard_image_tag" {
+  description = "Dashboard container image tag to deploy"
+  type        = string
+  default     = "latest"
+}
+
+variable "dashboard_cpu" {
+  description = "Fargate CPU units for dashboard task"
+  type        = number
+  default     = 256
+}
+
+variable "dashboard_memory" {
+  description = "Fargate memory (MiB) for dashboard task"
+  type        = number
+  default     = 512
+}
+
+variable "dashboard_desired_count" {
+  description = "Desired task count for dashboard ECS service"
+  type        = number
+  default     = 1
+}

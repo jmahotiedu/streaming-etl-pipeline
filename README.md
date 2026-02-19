@@ -19,6 +19,13 @@
 
 ---
 
+## Live Status (2026-02-19)
+
+- Core mode is the active deploy target: networking + MSK + S3 + ECR + public Streamlit shell on ECS Fargate/ALB.
+- The shell is intentionally labeled `Core Mode / Demo Data` so demos do not imply a fully entitled warehouse path.
+- Full managed path (EMR + MWAA + Redshift Serverless) remains blocked until account subscription enablement.
+- No third-party API keys are required for demo usage; deploy requires AWS credentials.
+
 ## The Problem
 
 IoT deployments generate massive volumes of sensor data that's worthless sitting in raw form. The engineering challenge: ingest high-throughput events in real-time, clean and transform them reliably, and make them queryable for analytics — all while handling late data, schema issues, and pipeline failures gracefully.
@@ -178,17 +185,18 @@ pytest tests/ -v --cov=src
 
 ```mermaid
 graph TD
-  ALB[ALB / Public Endpoints] --> MWAA[MWAA Airflow]
-  MSK[Amazon MSK] --> EMR[EMR Spark Streaming]
-  EMR --> BRONZE[S3 Bronze]
+  ALB[Public ALB] --> ECS[ECS Fargate Streamlit Shell]
+  ECRD[ECR Dashboard] --> ECS
+  MSK[Amazon MSK] --> BRONZE[S3 Bronze]
   BRONZE --> SILVER[S3 Silver]
   SILVER --> GOLD[S3 Gold]
-  GOLD --> RS[Redshift Serverless]
-  MWAA --> EMR
-  MWAA --> RS
+  MWAA[MWAA Airflow - pending entitlement] --> EMR[EMR Spark - pending entitlement]
+  EMR --> BRONZE
+  GOLD --> RS[Redshift Serverless - pending entitlement]
   ECR1[ECR Producer] --> EMR
   ECR2[ECR Spark] --> EMR
-  CW[CloudWatch Logs] --> MWAA
+  CW[CloudWatch Logs] --> ECS
+  CW --> MWAA
   CW --> MSK
 ```
 
@@ -196,6 +204,7 @@ graph TD
 
 Terraform now uses remote state in S3 with DynamoDB locking (bootstrapped by script).
 `scripts/deploy.sh` includes a preflight guard for EMR, MWAA, and Redshift Serverless account access.
+Core mode now includes the public shell resources.
 
 ```bash
 # Full stack plan + apply (requires service entitlement for EMR/MWAA/Redshift)
@@ -211,11 +220,20 @@ DEPLOY_CORE_ONLY=true ./scripts/deploy.sh
 # Core mode dry run
 DEPLOY_CORE_ONLY=true APPLY=false ./scripts/deploy.sh
 
+# Optional: skip dashboard image build/push for infra-only apply
+DEPLOY_CORE_ONLY=true BUILD_DASHBOARD_IMAGE=false ./scripts/deploy.sh
+
 # Optional: bypass service entitlement preflight guard
 SKIP_SERVICE_PREFLIGHT=true ./scripts/deploy.sh
 
 # Core smoke verification (MSK ACTIVE + bronze S3 write/delete)
 ./scripts/core-smoke.sh
+
+# Public shell smoke verification (ALB + Core Mode / Demo Data banner)
+./scripts/shell-smoke.sh
+
+# Print public shell URL from Terraform output
+terraform -chdir=terraform output dashboard_shell_url
 
 # Teardown (keep state backend)
 ./scripts/teardown.sh
@@ -248,7 +266,9 @@ Estimated running cost (continuous): about `$120-$280/month` depending on runtim
 - Partial resources were immediately torn down via `scripts/teardown.sh` on `2026-02-18`.
 - Deploy script now fails fast on missing service entitlement before Terraform apply to avoid partial paid resource creation.
 - Core mode apply path (`DEPLOY_CORE_ONLY=true`) is available for demos while service entitlement is pending.
-- Core verification command: `./scripts/core-smoke.sh`.
+- Core mode now includes a public Streamlit shell (ECS Fargate + ALB) with explicit `Core Mode / Demo Data` labeling.
+- Core verification commands: `./scripts/core-smoke.sh` and `./scripts/shell-smoke.sh`.
+- Full EMR/MWAA/Redshift execution path remains pending account enablement as of `2026-02-19`.
 
 ## Project Structure
 
@@ -282,6 +302,11 @@ tests/                        # 67 tests (unit + integration)
 docs/                         # Demo, architecture, interview prep, teardown
 ```
 
+Shell deployment assets:
+- `Dockerfile.dashboard`
+- `scripts/shell-smoke.sh`
+- Terraform resources in `terraform/dashboard_shell.tf`
+
 ## Testing
 
 ```
@@ -313,6 +338,7 @@ docs/                         # Demo, architecture, interview prep, teardown
 | [Architecture](docs/ARCHITECTURE.md) | Component descriptions, data flow, design decisions, scaling |
 | [Interview Prep](docs/INTERVIEW_PREP.md) | 28 Q&A pairs — Kafka, Spark, Airflow, exactly-once, scaling |
 | [Teardown](docs/TEARDOWN.md) | AWS resource cleanup with billing verification |
+| [Reality Check](docs/reality-check.md) | Claim-vs-evidence status for live/core/full deployment truth |
 
 ## License
 

@@ -57,3 +57,23 @@ output "spark_ecr_repository_url" {
   description = "ECR repository URL for Spark image"
   value       = aws_ecr_repository.spark.repository_url
 }
+
+output "dashboard_ecr_repository_url" {
+  description = "ECR repository URL for dashboard image"
+  value       = aws_ecr_repository.dashboard.repository_url
+}
+
+output "dashboard_shell_url" {
+  description = "Public URL for Streamlit dashboard shell"
+  value       = var.enable_dashboard_shell ? "http://${aws_lb.dashboard[0].dns_name}" : null
+}
+
+output "dashboard_ecs_cluster_name" {
+  description = "ECS cluster name for dashboard service"
+  value       = var.enable_dashboard_shell ? aws_ecs_cluster.dashboard[0].name : null
+}
+
+output "dashboard_ecs_service_name" {
+  description = "ECS service name for dashboard shell"
+  value       = var.enable_dashboard_shell ? aws_ecs_service.dashboard[0].name : null
+}

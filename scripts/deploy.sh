@@ -16,6 +16,9 @@ DEPLOY_CORE_ONLY="${DEPLOY_CORE_ONLY:-false}"
 ENABLE_EMR="${ENABLE_EMR:-true}"
 ENABLE_MWAA="${ENABLE_MWAA:-true}"
 ENABLE_REDSHIFT="${ENABLE_REDSHIFT:-true}"
+ENABLE_DASHBOARD_SHELL="${ENABLE_DASHBOARD_SHELL:-true}"
+DASHBOARD_IMAGE_TAG="${DASHBOARD_IMAGE_TAG:-latest}"
+BUILD_DASHBOARD_IMAGE="${BUILD_DASHBOARD_IMAGE:-true}"
 
 if [[ "${DEPLOY_CORE_ONLY}" == "true" ]]; then
   ENABLE_EMR="false"
@@ -48,6 +51,7 @@ echo "Environment:    ${TF_ENVIRONMENT}"
 echo "Enable EMR:     ${ENABLE_EMR}"
 echo "Enable MWAA:    ${ENABLE_MWAA}"
 echo "Enable Redshift:${ENABLE_REDSHIFT}"
+echo "Enable shell:   ${ENABLE_DASHBOARD_SHELL}"
 
 check_service_access() {
   local service_name="$1"
@@ -119,6 +123,8 @@ terraform_vars=(
   "-var=enable_emr=${ENABLE_EMR}"
   "-var=enable_mwaa=${ENABLE_MWAA}"
   "-var=enable_redshift=${ENABLE_REDSHIFT}"
+  "-var=enable_dashboard_shell=${ENABLE_DASHBOARD_SHELL}"
+  "-var=dashboard_image_tag=${DASHBOARD_IMAGE_TAG}"
 )
 
 if [[ "${ENABLE_REDSHIFT}" == "true" ]]; then
@@ -138,6 +144,43 @@ fi
 if [[ "${APPLY}" == "true" ]]; then
   "${TERRAFORM_BIN}" apply -auto-approve tfplan
   "${TERRAFORM_BIN}" output
+
+  if [[ "${ENABLE_DASHBOARD_SHELL}" == "true" ]]; then
+    DASHBOARD_URL="$("${TERRAFORM_BIN}" output -raw dashboard_shell_url)"
+    echo "Dashboard shell URL: ${DASHBOARD_URL}"
+
+    if [[ "${BUILD_DASHBOARD_IMAGE}" == "true" ]]; then
+      if ! command -v docker >/dev/null 2>&1; then
+        echo "docker binary not found. Skipping dashboard image build/push."
+        echo "Set BUILD_DASHBOARD_IMAGE=false to suppress this warning."
+      else
+        DASHBOARD_REPO="$("${TERRAFORM_BIN}" output -raw dashboard_ecr_repository_url)"
+        DASHBOARD_CLUSTER="$("${TERRAFORM_BIN}" output -raw dashboard_ecs_cluster_name)"
+        DASHBOARD_SERVICE="$("${TERRAFORM_BIN}" output -raw dashboard_ecs_service_name)"
+        ECR_REGISTRY="$(echo "${DASHBOARD_REPO}" | cut -d'/' -f1)"
+
+        echo "Logging into ECR registry ${ECR_REGISTRY}..."
+        "${AWS_CLI_BIN}" ecr get-login-password --region "${AWS_REGION}" \
+          | docker login --username AWS --password-stdin "${ECR_REGISTRY}" >/dev/null
+
+        echo "Building dashboard image ${DASHBOARD_REPO}:${DASHBOARD_IMAGE_TAG}..."
+        docker build \
+          -f "${ROOT_DIR}/Dockerfile.dashboard" \
+          -t "${DASHBOARD_REPO}:${DASHBOARD_IMAGE_TAG}" \
+          "${ROOT_DIR}"
+
+        echo "Pushing dashboard image..."
+        docker push "${DASHBOARD_REPO}:${DASHBOARD_IMAGE_TAG}"
+
+        echo "Forcing ECS service redeploy..."
+        "${AWS_CLI_BIN}" ecs update-service \
+          --cluster "${DASHBOARD_CLUSTER}" \
+          --service "${DASHBOARD_SERVICE}" \
+          --force-new-deployment \
+          --region "${AWS_REGION}" >/dev/null
+      fi
+    fi
+  fi
 else
   echo "Skipping apply because APPLY=${APPLY}"
 fi
