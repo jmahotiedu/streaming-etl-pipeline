@@ -19,6 +19,12 @@
 
 ---
 
+## Live Cloud Deployment
+
+- Live Shell URL: `http://streaming-etl-dash-demo-1722592003.us-east-1.elb.amazonaws.com`
+- Mode: Core deployment (MSK/S3/VPC/ECR + ECS/ALB shell)
+- Note: Full EMR/MWAA/Redshift path remains gated by account subscription enablement
+
 ## Live Status (2026-02-19)
 
 - Core mode is the active deploy target: networking + MSK + S3 + ECR + public Streamlit shell on ECS Fargate/ALB.
