@@ -172,15 +172,83 @@ pytest tests/ -v --cov=src
 # Analytics  → streamlit run src/dashboard/app.py
 ```
 
-### Deploy to AWS
+## Cloud Deployment
 
-```bash
-cd terraform && terraform init && terraform apply
+### AWS Topology
+
+```mermaid
+graph TD
+  ALB[ALB / Public Endpoints] --> MWAA[MWAA Airflow]
+  MSK[Amazon MSK] --> EMR[EMR Spark Streaming]
+  EMR --> BRONZE[S3 Bronze]
+  BRONZE --> SILVER[S3 Silver]
+  SILVER --> GOLD[S3 Gold]
+  GOLD --> RS[Redshift Serverless]
+  MWAA --> EMR
+  MWAA --> RS
+  ECR1[ECR Producer] --> EMR
+  ECR2[ECR Spark] --> EMR
+  CW[CloudWatch Logs] --> MWAA
+  CW --> MSK
 ```
 
-Provisions: MSK (3 brokers) + EMR (Spark 3.5) + S3 (3 buckets with lifecycle) + Redshift Serverless + MWAA + IAM roles.
+### Deploy / Teardown Workflow
 
-Estimated cost: ~$100-200/month when active. Use `terraform destroy` when not demoing.
+Terraform now uses remote state in S3 with DynamoDB locking (bootstrapped by script).
+`scripts/deploy.sh` includes a preflight guard for EMR, MWAA, and Redshift Serverless account access.
+
+```bash
+# Full stack plan + apply (requires service entitlement for EMR/MWAA/Redshift)
+export REDSHIFT_ADMIN_PASSWORD='replace-with-strong-password'
+./scripts/deploy.sh
+
+# Plan only dry run
+APPLY=false ./scripts/deploy.sh
+
+# Core mode (MSK + S3 + ECR + networking only; no EMR/MWAA/Redshift)
+DEPLOY_CORE_ONLY=true ./scripts/deploy.sh
+
+# Core mode dry run
+DEPLOY_CORE_ONLY=true APPLY=false ./scripts/deploy.sh
+
+# Optional: bypass service entitlement preflight guard
+SKIP_SERVICE_PREFLIGHT=true ./scripts/deploy.sh
+
+# Core smoke verification (MSK ACTIVE + bronze S3 write/delete)
+./scripts/core-smoke.sh
+
+# Teardown (keep state backend)
+./scripts/teardown.sh
+
+# Teardown core mode resources
+DEPLOY_CORE_ONLY=true ./scripts/teardown.sh
+
+# Optional: teardown infra + remote state backend
+DESTROY_STATE_BACKEND=true ./scripts/teardown.sh
+```
+
+Manual CI deploy path:
+- GitHub Actions: `.github/workflows/terraform-deploy.yml` (`workflow_dispatch`).
+- Unified multi-project teardown script: `~/projects/scripts/teardown-all.sh`.
+
+Estimated running cost (continuous): about `$120-$280/month` depending on runtime and usage.
+- Core mode estimated running cost: about `$25-$70/month` (mostly MSK + networking).
+
+### Deployment Evidence
+
+- Dry-run plan executed on `2026-02-18` via `scripts/deploy.sh` (`APPLY=false`).
+- Result: `Plan: 54 to add, 0 to change, 0 to destroy`.
+- State backend bootstrap confirmed:
+  - S3 state bucket created
+  - DynamoDB lock table created
+- Live apply attempted on `2026-02-18` (`APPLY=true`) and failed with `SubscriptionRequiredException` for:
+  - EMR
+  - MWAA
+  - Redshift Serverless
+- Partial resources were immediately torn down via `scripts/teardown.sh` on `2026-02-18`.
+- Deploy script now fails fast on missing service entitlement before Terraform apply to avoid partial paid resource creation.
+- Core mode apply path (`DEPLOY_CORE_ONLY=true`) is available for demos while service entitlement is pending.
+- Core verification command: `./scripts/core-smoke.sh`.
 
 ## Project Structure
 

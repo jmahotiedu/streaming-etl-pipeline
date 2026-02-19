@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "bronze" {
-  bucket = "pipeline-bronze-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  bucket        = "pipeline-bronze-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  force_destroy = var.force_destroy_buckets
 
   tags = {
     Name  = "pipeline-bronze"
@@ -8,7 +9,8 @@ resource "aws_s3_bucket" "bronze" {
 }
 
 resource "aws_s3_bucket" "silver" {
-  bucket = "pipeline-silver-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  bucket        = "pipeline-silver-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  force_destroy = var.force_destroy_buckets
 
   tags = {
     Name  = "pipeline-silver"
@@ -17,7 +19,8 @@ resource "aws_s3_bucket" "silver" {
 }
 
 resource "aws_s3_bucket" "gold" {
-  bucket = "pipeline-gold-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  bucket        = "pipeline-gold-${var.environment}-${data.aws_caller_identity.current.account_id}"
+  force_destroy = var.force_destroy_buckets
 
   tags = {
     Name  = "pipeline-gold"
@@ -49,6 +52,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "bronze" {
     id     = "archive-old-bronze"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     transition {
       days          = 30
       storage_class = "STANDARD_IA"
@@ -72,6 +79,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "silver" {
     id     = "archive-old-silver"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     transition {
       days          = 60
       storage_class = "STANDARD_IA"
@@ -90,6 +101,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "gold" {
   rule {
     id     = "archive-old-gold"
     status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
 
     transition {
       days          = 90

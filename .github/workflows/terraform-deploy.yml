@@ -1,0 +1,113 @@
+name: Terraform Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Terraform environment name"
+        required: true
+        default: "demo"
+      apply:
+        description: "Apply after planning (true/false)"
+        required: true
+        default: "false"
+      deploy_core_only:
+        description: "Deploy core mode only (MSK + S3 + ECR + networking)"
+        required: true
+        default: "true"
+      enable_emr:
+        description: "Enable EMR resources"
+        required: true
+        default: "false"
+      enable_mwaa:
+        description: "Enable MWAA resources"
+        required: true
+        default: "false"
+      enable_redshift:
+        description: "Enable Redshift Serverless resources"
+        required: true
+        default: "false"
+      skip_service_preflight:
+        description: "Skip AWS service entitlement preflight checks"
+        required: true
+        default: "false"
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: us-east-1
+      TF_ENVIRONMENT: ${{ inputs.environment }}
+      DEPLOY_CORE_ONLY: ${{ inputs.deploy_core_only }}
+      ENABLE_EMR: ${{ inputs.enable_emr }}
+      ENABLE_MWAA: ${{ inputs.enable_mwaa }}
+      ENABLE_REDSHIFT: ${{ inputs.enable_redshift }}
+      SKIP_SERVICE_PREFLIGHT: ${{ inputs.skip_service_preflight }}
+      REDSHIFT_ADMIN_PASSWORD: ${{ secrets.REDSHIFT_ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform plan
+        run: |
+          chmod +x scripts/deploy.sh
+          APPLY=false ./scripts/deploy.sh
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: streaming-etl-tfplan-${{ inputs.environment }}
+          path: terraform/tfplan
+          if-no-files-found: error
+
+  terraform-apply:
+    if: ${{ inputs.apply == 'true' }}
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      AWS_REGION: us-east-1
+      TF_ENVIRONMENT: ${{ inputs.environment }}
+      DEPLOY_CORE_ONLY: ${{ inputs.deploy_core_only }}
+      ENABLE_EMR: ${{ inputs.enable_emr }}
+      ENABLE_MWAA: ${{ inputs.enable_mwaa }}
+      ENABLE_REDSHIFT: ${{ inputs.enable_redshift }}
+      SKIP_SERVICE_PREFLIGHT: ${{ inputs.skip_service_preflight }}
+      REDSHIFT_ADMIN_PASSWORD: ${{ secrets.REDSHIFT_ADMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform apply
+        run: |
+          chmod +x scripts/deploy.sh
+          APPLY=true ./scripts/deploy.sh

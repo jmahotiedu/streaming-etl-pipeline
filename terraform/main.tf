@@ -8,11 +8,7 @@ terraform {
     }
   }
 
-  backend "s3" {
-    bucket = "streaming-etl-tf-state"
-    key    = "terraform.tfstate"
-    region = "us-east-1"
-  }
+  backend "s3" {}
 }
 
 provider "aws" {
@@ -20,7 +16,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "streaming-etl-pipeline"
+      Project     = var.project_name
       Environment = var.environment
       ManagedBy   = "terraform"
     }
@@ -111,5 +107,15 @@ resource "aws_security_group" "default" {
 
   tags = {
     Name = "streaming-etl-default-sg"
+  }
+}
+
+check "redshift_password_required" {
+  assert {
+    condition = !var.enable_redshift || (
+      var.redshift_admin_password != null &&
+      length(var.redshift_admin_password) >= 8
+    )
+    error_message = "redshift_admin_password must be set to at least 8 characters when enable_redshift=true."
   }
 }

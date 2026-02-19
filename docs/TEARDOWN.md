@@ -7,21 +7,24 @@ Step-by-step instructions for cleaning up all AWS resources provisioned by this 
 The primary cleanup method. This removes all Terraform-managed resources.
 
 ```bash
+# Full-stack destroy (requires REDSHIFT_ADMIN_PASSWORD when Redshift is enabled)
+REDSHIFT_ADMIN_PASSWORD='replace-with-strong-password' ./scripts/teardown.sh
+
+# Core-only destroy (if deployed with DEPLOY_CORE_ONLY=true)
+DEPLOY_CORE_ONLY=true ./scripts/teardown.sh
+
+# Or run Terraform directly
 cd terraform
-
-# Preview what will be destroyed
 terraform plan -destroy
-
-# Execute destruction
 terraform destroy
 ```
 
 Type `yes` when prompted. This removes:
 - MSK cluster (`streaming-etl-kafka`)
-- EMR cluster (`streaming-etl-spark`)
+- EMR cluster (`streaming-etl-spark`) when enabled
 - S3 buckets (Bronze, Silver, Gold)
-- Redshift Serverless namespace and workgroup
-- MWAA environment
+- Redshift Serverless namespace and workgroup when enabled
+- MWAA environment when enabled
 - ECR repositories
 - VPC, subnets, security groups, IAM roles
 
