@@ -8,6 +8,8 @@
 <br/>
 
 <p align="center">
+  <a href="https://github.com/jmahotiedu/streaming-etl-pipeline/actions/workflows/ci.yml"><img src="https://github.com/jmahotiedu/streaming-etl-pipeline/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
   <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Apache%20Kafka-MSK-231F20?style=flat&logo=apachekafka&logoColor=white" alt="Kafka" />
   <img src="https://img.shields.io/badge/PySpark-3.5-E25A1C?style=flat&logo=apachespark&logoColor=white" alt="Spark" />
@@ -19,18 +21,12 @@
 
 ---
 
-## Live Cloud Deployment
+## Cloud Status
 
-- Live Shell URL: `http://streaming-etl-dash-demo-1722592003.us-east-1.elb.amazonaws.com`
+Core infrastructure was deployed live on AWS (Feb 18-19, 2026) and has been deprovisioned to manage costs. See deployment evidence below and `scripts/deploy.sh` to reproduce.
+
 - Mode: Core deployment (MSK/S3/VPC/ECR + ECS/ALB shell)
 - Note: Full EMR/MWAA/Redshift path remains gated by account subscription enablement
-
-## Live Status (2026-02-19)
-
-- Core mode is the active deploy target: networking + MSK + S3 + ECR + public Streamlit shell on ECS Fargate/ALB.
-- The shell is intentionally labeled `Core Mode / Demo Data` so demos do not imply a fully entitled warehouse path.
-- Full managed path (EMR + MWAA + Redshift Serverless) remains blocked until account subscription enablement.
-- No third-party API keys are required for demo usage; deploy requires AWS credentials.
 
 ## The Problem
 
@@ -272,7 +268,7 @@ Estimated running cost (continuous): about `$120-$280/month` depending on runtim
 - Partial resources were immediately torn down via `scripts/teardown.sh` on `2026-02-18`.
 - Deploy script now fails fast on missing service entitlement before Terraform apply to avoid partial paid resource creation.
 - Core mode apply path (`DEPLOY_CORE_ONLY=true`) is available for demos while service entitlement is pending.
-- Core mode now includes a public Streamlit shell (ECS Fargate + ALB) with explicit `Core Mode / Demo Data` labeling.
+- Core mode supports a public Streamlit shell (ECS Fargate + ALB) with explicit `Core Mode / Demo Data` labeling.
 - Core verification commands: `./scripts/core-smoke.sh` and `./scripts/shell-smoke.sh`.
 - Full EMR/MWAA/Redshift execution path remains pending account enablement as of `2026-02-19`.
 
